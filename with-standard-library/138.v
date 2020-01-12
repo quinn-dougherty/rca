@@ -5,9 +5,10 @@ Open Local Scope R.
 (** Assume s in R is an upper bound for a set A in R. *)
 (** then, s = supA iff forall eps > 0 exists a in A s.t. s - eps < a*)
 
-Check is_upper_bound.
-Check lub.
-Check completeness.
+
+Axiom equality :
+  (*equality in R - Theorem 1.2.6 in Abbott*)
+  forall x y eps, Rabs (x - y) < eps <-> x = y.
 
 Lemma if_not_ub_then_exists (An : nat -> R) (x : R) :
   not (is_upper_bound (EUn An) x) -> exists a, (EUn An) a /\ x < a.
@@ -17,7 +18,13 @@ Proof.
 
   Admitted.
 
-Lemma one_three_eight
+Lemma Rle_plus_nonneg_forward (x y : R) :
+  exists (eps : nonnegreal),
+  x <= y -> x = y - eps.
+Proof.
+Admitted.
+
+Theorem one_three_eight
       (An : nat -> R)
       (s : R)
       (s_is_ub : is_upper_bound (EUn An) s)
@@ -54,31 +61,41 @@ Proof.
     - apply G2.
   }
   { intros H.
-    assert (H0 : 1 > 0). lra.
-    specialize (H (mkposreal 1 H0));
-      destruct H as [a [H1 H2]];
-      simpl in H2.
+    assert (G : forall (eps : posreal), not (is_upper_bound (EUn An) (s - eps))).
+    { unfold not.
+      intros eps H'.
+      specialize (H eps); destruct H as [a [H1 H2]].
+      give_up.
+    }
+    assert (eps0 : exists (eps : posreal), eps = eps). give_up.
+    destruct eps0 as [[eps H__eps] _].
+    remember (s - eps) as b.
+    specialize (G (mkposreal eps H__eps)); simpl in G.
+
     unfold lub;
-      destruct ub_to_lub as [x G];
-      unfold is_lub in G;
-      destruct G as [G1 G2].
-    assert (G2' : forall b, is_upper_bound (EUn An) b -> x <= b). apply G2.
-    specialize (G2 s s_is_ub).
-    specialize (G2' x G1).
+      destruct ub_to_lub as [b' F];
+      unfold is_lub in F;
+      destruct F as [F1 F2];
+      specialize (F2 s s_is_ub).
 
-    unfold is_upper_bound in G1.
-    specialize (G1 simpl).
-
-    unfold is_upper_bound in s_is_ub.
-    specialize (s_is_ub a H1).
-    unfold has_ub, bound in An_has_ub;
-      destruct An_has_ub as [m An_has_ub'];
-      unfold is_upper_bound in An_has_ub'.
-    specialize (An_has_ub' a H1).
-    unfold is_upper_bound in G1.
-
-
-
-
-
+    destruct F2 as [F2' | F2'].
+    - exfalso.
+      apply G.
+      unfold is_upper_bound in *.
+      intros x H__x.
+      specialize (s_is_ub x H__x).
+      specialize (F1 x H__x).
+      specialize (H (mkposreal eps H__eps)); destruct H as [a [H1 H2]]; simpl in H2.
+      right.
+      remember (Rle_plus_nonneg_forward x s) as E.
+      destruct E as [eps' E].
+      assert (E' : x <= s -> x = s - eps'). apply E.
+      specialize (E' s_is_ub).
+      destruct eps' as [eps' H__eps'].
+      assert (H0 : eps' = eps). give_up.
+      rewrite <- H0.
+      simpl in E'.
+      apply E'.
+    - rewrite F2'. reflexivity.
   }
+Admitted.
